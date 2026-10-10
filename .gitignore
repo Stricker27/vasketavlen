@@ -1,0 +1,8 @@
+node_modules
+services/*/node_modules
+services/*/dist
+services/*/.env
+.env
+coverage
+data/
+.DS_Store

@@ -1,0 +1,11 @@
+{
+  "name": "vasketavlen",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev:api": "npm --prefix services/api run dev",
+    "dev:web": "npm --prefix services/web run dev -- --host 0.0.0.0",
+    "build": "npm --prefix services/api run build && npm --prefix services/web run build",
+    "test": "npm --prefix services/api run test && npm --prefix services/web run test -- --run"
+  }
+}
