@@ -49,3 +49,48 @@ test('allows paginating through 30 days in booking calendar and enforces 30 days
   expect(dateInput).toHaveAttribute('min');
   expect(dateInput).toHaveAttribute('max');
 });
+
+test('prevents booking overlapping time slot with another resident and disables submit', async () => {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  vi.spyOn(api, 'getCurrentUser').mockResolvedValue({
+    id: 1,
+    login: 'alice',
+    displayName: 'Alice Test',
+  });
+  vi.spyOn(api, 'getBookings').mockResolvedValue([
+    {
+      id: 99,
+      resident_id: 2,
+      resident_name: 'Bruno Hansen',
+      start: `${todayStr}T09:00:00`,
+      end: `${todayStr}T11:00:00`,
+      duration_minutes: 120,
+      created_at: new Date().toISOString(),
+    },
+  ]);
+  vi.spyOn(api, 'getQuota').mockResolvedValue({
+    usedMinutes: 0,
+    remainingMinutes: 360,
+    totalMinutes: 360,
+  });
+
+  render(<App />);
+
+  const bookingTab = await screen.findByRole('button', { name: /booking/i });
+  fireEvent.click(bookingTab);
+
+  // Set time overlapping Bruno's slot (e.g. 09:00 to 11:00 or 10:00 to 11:00)
+  const startTimeSelect = screen.getByLabelText(/starttidspunkt/i);
+  const endTimeSelect = screen.getByLabelText(/sluttidspunkt/i);
+
+  fireEvent.change(startTimeSelect, { target: { value: '10:00' } });
+  fireEvent.change(endTimeSelect, { target: { value: '11:00' } });
+
+  // Overlap warning should be shown and submit button disabled
+  expect(screen.getAllByText(/tidspunktet er optaget/i).length).toBeGreaterThanOrEqual(1);
+  expect(screen.getAllByText(/bruno hansen/i).length).toBeGreaterThanOrEqual(1);
+
+  // Submit button should be disabled
+  const submitButton = screen.getByRole('button', { name: /tidspunktet er optaget/i });
+  expect(submitButton).toBeDisabled();
+});

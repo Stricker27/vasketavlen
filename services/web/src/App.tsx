@@ -64,6 +64,9 @@ const translations = {
     page: 'Side',
     of: 'af',
     maxAdvanceBooking: 'Du kan kun reservere en vasketid op til 30 dage frem i tiden.',
+    slotAlreadyBooked: 'Tidspunktet overlapper med en eksisterende reservation.',
+    slotAlreadyBookedBy: 'Tidspunktet er allerede reserveret af',
+    slotOccupied: 'Tidspunktet er optaget',
   },
   en: {
     language: 'Language',
@@ -117,6 +120,9 @@ const translations = {
     page: 'Page',
     of: 'of',
     maxAdvanceBooking: 'You can only book a slot up to 30 days in advance.',
+    slotAlreadyBooked: 'This time slot overlaps with an existing booking.',
+    slotAlreadyBookedBy: 'This time slot is already booked by',
+    slotOccupied: 'Time slot occupied',
   },
 };
 
@@ -252,6 +258,14 @@ export function App() {
     setStatusMessage(t.loggedOut);
   }
 
+  const durationMinutes = calculateDurationMinutes(bookingForm.startTime, bookingForm.endTime);
+
+  const overlappingBooking = useMemo(() => {
+    const startIso = `${bookingForm.date}T${bookingForm.startTime}:00`;
+    const endIso = `${bookingForm.date}T${bookingForm.endTime}:00`;
+    return bookings.find((b) => b.start < endIso && b.end > startIso);
+  }, [bookings, bookingForm.date, bookingForm.startTime, bookingForm.endTime]);
+
   async function handleBookingSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
@@ -261,18 +275,32 @@ export function App() {
       return;
     }
 
+    if (overlappingBooking) {
+      setError(
+        overlappingBooking.resident_name
+          ? `${t.slotAlreadyBookedBy} ${overlappingBooking.resident_name} (${overlappingBooking.start.slice(11, 16)}–${overlappingBooking.end.slice(11, 16)}).`
+          : t.slotAlreadyBooked,
+      );
+      return;
+    }
+
     try {
       const result = await api.createBooking(bookingForm);
       setStatusMessage(`${t.bookingSuccess} (${result.start.slice(11, 16)}–${result.end.slice(11, 16)})`);
       await refreshBookingData();
       setActiveTab('oversigt');
     } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : t.bookingError;
+      let message = t.bookingError;
+      if (caughtError instanceof Error) {
+        if (caughtError.message.includes('overlap') || caughtError.message.includes('BOOKING_OVERLAP') || caughtError.message.includes('optaget')) {
+          message = t.slotAlreadyBooked;
+        } else {
+          message = caughtError.message;
+        }
+      }
       setError(message);
     }
   }
-
-  const durationMinutes = calculateDurationMinutes(bookingForm.startTime, bookingForm.endTime);
 
   const userBookings = useMemo(() => {
     if (!user) return [];
@@ -644,8 +672,9 @@ export function App() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">{t.startTime}</label>
+                        <label htmlFor="booking-start-time" className="block text-xs font-semibold text-slate-700 mb-1">{t.startTime}</label>
                         <select
+                          id="booking-start-time"
                           value={bookingForm.startTime}
                           onChange={(e) => setBookingForm({ ...bookingForm, startTime: e.target.value })}
                           className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold font-mono text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-cyan-500 focus:outline-none"
@@ -657,8 +686,9 @@ export function App() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">{t.endTime}</label>
+                        <label htmlFor="booking-end-time" className="block text-xs font-semibold text-slate-700 mb-1">{t.endTime}</label>
                         <select
+                          id="booking-end-time"
                           value={bookingForm.endTime}
                           onChange={(e) => setBookingForm({ ...bookingForm, endTime: e.target.value })}
                           className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold font-mono text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-cyan-500 focus:outline-none"
@@ -675,12 +705,28 @@ export function App() {
                       <strong className="text-cyan-700 font-mono font-bold text-sm">{durationMinutes} {t.min}</strong>
                     </div>
 
+                    {overlappingBooking && (
+                      <div className="flex items-start gap-2.5 text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-2xl">
+                        <svg className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div>
+                          <p className="font-bold">{t.slotOccupied}</p>
+                          <p className="text-[11px] text-rose-600 mt-0.5">
+                            {overlappingBooking.resident_name
+                              ? `${t.slotAlreadyBookedBy} ${overlappingBooking.resident_name} (${overlappingBooking.start.slice(11, 16)}–${overlappingBooking.end.slice(11, 16)})`
+                              : t.slotAlreadyBooked}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       type="submit"
-                      disabled={durationMinutes <= 0}
+                      disabled={durationMinutes <= 0 || Boolean(overlappingBooking)}
                       className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-sky-600 to-blue-700 hover:from-cyan-600 hover:to-blue-800 text-white font-bold text-xs shadow-md shadow-cyan-500/25 transition active:scale-[0.99] disabled:opacity-50"
                     >
-                      {t.confirmBooking}
+                      {overlappingBooking ? t.slotOccupied : t.confirmBooking}
                     </button>
                   </form>
 

@@ -63,15 +63,26 @@ export const mockClient: MockApiClient = {
     return { usedMinutes: 120, remainingMinutes: 240, totalMinutes: 360 };
   },
   async createBooking(booking) {
-    return {
+    const startIso = `${booking.date}T${booking.startTime}:00`;
+    const endIso = `${booking.date}T${booking.endTime}:00`;
+
+    const hasOverlap = mockBookings.some((b) => b.start < endIso && b.end > startIso);
+    if (hasOverlap) {
+      throw new Error('Tidspunktet overlapper med en eksisterende reservation.');
+    }
+
+    const duration = Math.max(0, (new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000);
+    const newBooking: Booking = {
       id: Date.now(),
       resident_id: 1,
       resident_name: 'Alice Sørensen',
-      start: `${booking.date}T${booking.startTime}:00`,
-      end: `${booking.date}T${booking.endTime}:00`,
-      duration_minutes: Math.max(0, (new Date(`2024-01-01T${booking.endTime}:00`).getTime() - new Date(`2024-01-01T${booking.startTime}:00`).getTime()) / 60000),
+      start: startIso,
+      end: endIso,
+      duration_minutes: duration,
       created_at: new Date().toISOString(),
     };
+    mockBookings.push(newBooking);
+    return newBooking;
   },
 };
 

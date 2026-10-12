@@ -92,15 +92,15 @@ export function getResidentQuota(residentId: number, weekStart: string): number 
   return Number(row?.total_minutes ?? 0);
 }
 
-export function hasBookingOverlap(residentId: number, start: string, end: string): boolean {
+export function hasBookingOverlap(start: string, end: string): boolean {
   const match = db
     .prepare(
       `SELECT 1
        FROM bookings
-       WHERE resident_id = ? AND start < ? AND end > ?
+       WHERE start < ? AND end > ?
        LIMIT 1`,
     )
-    .get(residentId, end, start) as { 1: number } | undefined;
+    .get(end, start) as { 1: number } | undefined;
 
   return Boolean(match);
 }

@@ -104,7 +104,7 @@ export function addBookingForResident(residentId: number, input: BookingInput) {
   const startIso = `${input.date}T${input.startTime}:00`;
   const endIso = `${input.date}T${input.endTime}:00`;
 
-  if (hasBookingOverlap(residentId, startIso, endIso)) {
+  if (hasBookingOverlap(startIso, endIso)) {
     throw new Error(JSON.stringify({ code: 'BOOKING_OVERLAP', message: 'This time overlaps an existing booking.' }));
   }
 
