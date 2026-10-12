@@ -59,6 +59,11 @@ const translations = {
     bookingError: 'Kunne ikke oprette reservation.',
     authError: 'Forkert brugernavn eller adgangskode.',
     toastMessage: 'Vaskemaskine 2 er færdig om 10 min',
+    previousDays: 'Forrige dage',
+    nextDays: 'Næste dage',
+    page: 'Side',
+    of: 'af',
+    maxAdvanceBooking: 'Du kan kun reservere en vasketid op til 30 dage frem i tiden.',
   },
   en: {
     language: 'Language',
@@ -107,6 +112,11 @@ const translations = {
     bookingError: 'Could not create reservation.',
     authError: 'Invalid username or password.',
     toastMessage: 'Washing machine 2 finishes in 10 min',
+    previousDays: 'Previous days',
+    nextDays: 'Next days',
+    page: 'Page',
+    of: 'of',
+    maxAdvanceBooking: 'You can only book a slot up to 30 days in advance.',
   },
 };
 
@@ -142,13 +152,45 @@ export function App() {
   const t = translations[language];
   const locale = language === 'da' ? 'da-DK' : 'en-GB';
 
-  const days = useMemo(() => buildCalendarDays(14), []);
+  const days = useMemo(() => buildCalendarDays(30), []);
+  const minBookingDate = useMemo(() => (days.length > 0 ? formatDate(days[0]) : ''), [days]);
+  const maxBookingDate = useMemo(() => (days.length > 0 ? formatDate(days[days.length - 1]) : ''), [days]);
+
+  const PAGE_SIZE = 5;
+  const totalPages = Math.ceil(days.length / PAGE_SIZE);
+  const [calendarPage, setCalendarPage] = useState(0);
+
+  useEffect(() => {
+    const idx = days.findIndex((d) => formatDate(d) === bookingForm.date);
+    if (idx !== -1) {
+      setCalendarPage(Math.floor(idx / PAGE_SIZE));
+    }
+  }, [bookingForm.date, days]);
+
+  const visibleDays = useMemo(() => {
+    const start = calendarPage * PAGE_SIZE;
+    return days.slice(start, start + PAGE_SIZE);
+  }, [days, calendarPage]);
+
+  const currentMonthLabel = useMemo(() => {
+    if (visibleDays.length === 0) return '';
+    const first = visibleDays[0];
+    const last = visibleDays[visibleDays.length - 1];
+    const firstMonth = first.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+    const lastMonth = last.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+    if (firstMonth === lastMonth) {
+      return firstMonth.charAt(0).toUpperCase() + firstMonth.slice(1);
+    }
+    const firstShort = first.toLocaleDateString(locale, { month: 'short' });
+    const lastShort = last.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
+    return `${firstShort.charAt(0).toUpperCase() + firstShort.slice(1)} – ${lastShort.charAt(0).toUpperCase() + lastShort.slice(1)}`;
+  }, [visibleDays, locale]);
 
   async function refreshBookingData() {
     setIsRefreshing(true);
     try {
       const from = formatDate(addDays(new Date(), -1));
-      const to = formatDate(addDays(new Date(), 29));
+      const to = formatDate(addDays(new Date(), 30));
       const [bookingData, quotaData] = await Promise.all([
         api.getBookings({ from, to }),
         api.getQuota(),
@@ -213,6 +255,11 @@ export function App() {
   async function handleBookingSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
+
+    if (bookingForm.date < minBookingDate || bookingForm.date > maxBookingDate) {
+      setError(t.maxAdvanceBooking);
+      return;
+    }
 
     try {
       const result = await api.createBooking(bookingForm);
@@ -516,38 +563,78 @@ export function App() {
                     <p className="text-xs text-slate-400 font-sans">Vælg dato og tidspunkt for din næste vask</p>
                   </div>
 
-                  {/* Calendar day buttons */}
-                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                    {days.slice(0, 7).map((d) => {
-                      const dStr = formatDate(d);
-                      const isSelected = bookingForm.date === dStr;
-                      const dayName = d.toLocaleDateString(locale, { weekday: 'short' });
-                      const dayNum = d.getDate();
+                  {/* Calendar day selector with pagination (up to 30 days ahead) */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs px-1">
+                      <span className="font-bold text-slate-700 capitalize font-display">
+                        {currentMonthLabel}
+                      </span>
+                      <span className="text-[11px] font-mono font-medium text-slate-400">
+                        {t.page} {calendarPage + 1} {t.of} {totalPages}
+                      </span>
+                    </div>
 
-                      return (
-                        <button
-                          key={dStr}
-                          type="button"
-                          onClick={() => setBookingForm({ ...bookingForm, date: dStr })}
-                          className={`flex-shrink-0 w-12 py-2.5 rounded-2xl flex flex-col items-center transition ${
-                            isSelected
-                              ? 'bg-gradient-to-b from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-200'
-                              : 'bg-white border border-slate-200 text-slate-700 hover:border-cyan-300'
-                          }`}
-                        >
-                          <span className="text-[10px] uppercase font-bold tracking-tight opacity-80">{dayName}</span>
-                          <span className="text-sm font-bold font-mono mt-0.5">{dayNum}</span>
-                        </button>
-                      );
-                    })}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCalendarPage((p) => Math.max(0, p - 1))}
+                        disabled={calendarPage === 0}
+                        aria-label={t.previousDays}
+                        className="h-14 w-8 flex items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-600 hover:border-cyan-300 hover:text-cyan-700 disabled:opacity-25 disabled:pointer-events-none transition flex-shrink-0 shadow-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+
+                      <div className="flex-1 grid grid-cols-5 gap-1.5">
+                        {visibleDays.map((d) => {
+                          const dStr = formatDate(d);
+                          const isSelected = bookingForm.date === dStr;
+                          const dayName = d.toLocaleDateString(locale, { weekday: 'short' });
+                          const dayNum = d.getDate();
+
+                          return (
+                            <button
+                              key={dStr}
+                              type="button"
+                              onClick={() => setBookingForm({ ...bookingForm, date: dStr })}
+                              className={`py-2 px-1 rounded-2xl flex flex-col items-center justify-center transition ${
+                                isSelected
+                                  ? 'bg-gradient-to-b from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-200'
+                                  : 'bg-white border border-slate-200 text-slate-700 hover:border-cyan-300 shadow-sm'
+                              }`}
+                            >
+                              <span className="text-[10px] uppercase font-bold tracking-tight opacity-80">{dayName}</span>
+                              <span className="text-sm font-bold font-mono mt-0.5">{dayNum}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setCalendarPage((p) => Math.min(totalPages - 1, p + 1))}
+                        disabled={calendarPage >= totalPages - 1}
+                        aria-label={t.nextDays}
+                        className="h-14 w-8 flex items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-600 hover:border-cyan-300 hover:text-cyan-700 disabled:opacity-25 disabled:pointer-events-none transition flex-shrink-0 shadow-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Booking Form */}
                   <form onSubmit={handleBookingSubmit} className="bg-white rounded-3xl p-5 border border-cyan-100 shadow-sm space-y-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">{t.date}</label>
+                      <label htmlFor="booking-date" className="block text-xs font-semibold text-slate-700 mb-1">{t.date}</label>
                       <input
+                        id="booking-date"
                         type="date"
+                        min={minBookingDate}
+                        max={maxBookingDate}
                         value={bookingForm.date}
                         onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })}
                         required
