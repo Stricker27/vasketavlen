@@ -176,11 +176,26 @@ export function App() {
 
   const durationMinutes = calculateDurationMinutes(bookingForm.startTime, bookingForm.endTime);
 
+  function LogoMark() {
+    return (
+      <svg className="logo-mark" viewBox="0 0 420 420" aria-hidden="true">
+        <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="210" cy="210" r="156" strokeWidth="18" fill="#f4efe9"/>
+          <path d="M 98 264 C 81 238, 83 195, 108 164 C 139 124, 196 103, 247 113 C 301 123, 349 164, 356 219 C 362 278, 328 325, 280 347 C 232 369, 176 367, 136 340 C 101 316, 75 279, 84 236" strokeWidth="17"/>
+          <path d="M 74 226 C 78 177, 104 134, 145 112 C 194 86, 257 90, 300 122 C 343 153, 365 207, 356 257 C 348 307, 315 351, 269 370 C 220 390, 160 389, 116 358 C 79 332, 56 284, 62 239" strokeWidth="17"/>
+          <path d="M 106 299 C 135 329, 177 344, 219 342 C 273 340, 323 311, 343 263 C 364 214, 356 161, 320 129 C 276 90, 212 81, 161 101 C 118 118, 81 155, 66 201" strokeWidth="17"/>
+          <path d="M 129 335 C 170 356, 220 360, 262 346 C 305 332, 340 298, 350 255 C 361 212, 350 167, 323 132 C 296 96, 251 72, 206 68" strokeWidth="15"/>
+          <path d="M 213 127 C 252 125, 286 150, 297 186 C 312 235, 268 279, 224 287 C 186 294, 146 271, 131 233 C 117 198, 129 153, 166 132 C 182 124, 197 122, 213 127" strokeWidth="15"/>
+        </g>
+      </svg>
+    );
+  }
+
   if (!user) {
     return (
       <FluentProvider theme={webLightTheme}>
         <div className="page-shell login-shell">
-          <div className="language-picker login-language-picker">
+          <div className="sr-only">
             <label htmlFor="language-select">{t.language}</label>
             <select
               id="language-select"
@@ -192,35 +207,93 @@ export function App() {
             </select>
           </div>
 
-          <Card className="login-card">
-            <CardHeader
-              header={<Text weight="semibold" size={900}>{t.signInTitle}</Text>}
-              description={<Text>{t.signInSubtitle}</Text>}
-            />
+          <div className="login-brand" aria-label="Vasketavlen brand mark">
+            <LogoMark />
+            <h1>Vasketavlen</h1>
+          </div>
+
+          <div className="login-card">
+            <div className="sr-only">
+              <Text weight="semibold" size={900}>{t.signInTitle}</Text>
+              <Text>{t.signInSubtitle}</Text>
+            </div>
+
             <form className="auth-form" onSubmit={handleLogin}>
-              <label>
-                {t.username}
-                <Input value={loginForm.username} onChange={(_, data) => setLoginForm((current) => ({ ...current, username: data.value }))} />
-              </label>
-              <label>
-                {t.password}
-                <Input type="password" value={loginForm.password} onChange={(_, data) => setLoginForm((current) => ({ ...current, password: data.value }))} />
-              </label>
-              <Button appearance="primary" type="submit">{t.signIn}</Button>
+              <div className="field-wrap">
+                <label className="field-label" htmlFor="username-input">
+                  <span className="field-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="12" cy="8" r="4.2" />
+                      <path d="M4 19c1.7-3 5-4.5 8-4.5S18.3 16 20 19" />
+                    </svg>
+                  </span>
+                  <input
+                    id="username-input"
+                    name="username"
+                    type="text"
+                    value={loginForm.username}
+                    onChange={(event) => setLoginForm((current) => ({ ...current, username: event.target.value }))}
+                    placeholder={t.username}
+                    autoComplete="username"
+                  />
+                </label>
+              </div>
+
+              <div className="field-wrap">
+                <label className="field-label" htmlFor="password-input">
+                  <span className="field-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="5" y="10" width="14" height="10" rx="2" />
+                      <path d="M8.5 10V8.5a3.5 3.5 0 1 1 7 0V10" />
+                    </svg>
+                  </span>
+                  <input
+                    id="password-input"
+                    name="password"
+                    type="password"
+                    value={loginForm.password}
+                    onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder={t.password}
+                    autoComplete="current-password"
+                  />
+                  <span className="field-visibility" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M2.5 2.5L21.5 21.5" />
+                      <path d="M10.5 10.5a1.5 1.5 0 0 0 3 0 1.5 1.5 0 0 0-3 0Z" />
+                      <path d="M3 12s3.5 5 9 5 9-5 9-5-3.5-5-9-5-9 5-9 5Z" />
+                    </svg>
+                  </span>
+                </label>
+              </div>
+
+              <div className="text-link-row">
+                <button type="button" className="inline-link">{t.password === 'Password' ? 'Forgot password?' : 'Glemt kodeord?'}</button>
+              </div>
+
+              <button type="submit" className="primary-button">
+                {t.signIn}
+              </button>
+
+              <div className="signup-row">
+                <span>{t.password === 'Password' ? 'New here?' : 'Ny her?'}</span>
+                <button type="button" className="inline-link inline-link--accent">{t.password === 'Password' ? 'Create account' : 'Opret konto'}</button>
+              </div>
             </form>
 
-            <div className="demo-box">
-              <Text weight="semibold">{t.demoAccounts}</Text>
-              <ul>
-                {DEMO_ACCOUNTS.map((account) => (
-                  <li key={account.username}>
-                    {account.username} / {account.password}
-                  </li>
-                ))}
-              </ul>
+            <div className="sr-only">
+              <div className="demo-box">
+                <Text weight="semibold">{t.demoAccounts}</Text>
+                <ul>
+                  {DEMO_ACCOUNTS.map((account) => (
+                    <li key={account.username}>
+                      {account.username} / {account.password}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
             {error ? <div className="notice error">{error}</div> : null}
-          </Card>
+          </div>
         </div>
       </FluentProvider>
     );
