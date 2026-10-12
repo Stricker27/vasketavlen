@@ -18,7 +18,8 @@
     "express": "^4.21.2",
     "express-session": "^1.18.0",
     "morgan": "^1.10.0",
-    "uuid": "^11.0.2"
+    "uuid": "^11.0.2",
+    "vasketavlen": "file:../.."
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.1",
